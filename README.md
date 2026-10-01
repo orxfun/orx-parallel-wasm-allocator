@@ -1,20 +1,20 @@
 # orx-parallel-wasm-allocator
 
-A proof-of-concept global allocator for browser WebAssembly builds that use `orx-parallel` with wasm atomics and shared memory. It is intentionally workload-specific, not a general-purpose allocator recommendation.
+A proof-of-concept global allocator for atomics-enabled WebAssembly builds that use `orx-parallel` with shared memory. It is intentionally workload-specific, not a general-purpose allocator recommendation.
 
 ## Current design
 
-With the `wasm-browser` feature enabled on an atomics-enabled `wasm32` target, the crate installs a global allocator made of 64 independent Talc heaps. A thread-local slot assigns each wasm thread a shard on its first allocation. Each shard uses Talc's wasm binning strategy and `WasmGrowAndClaim` memory source, with a `RawSpinlock` protecting that shard's heap.
+On an atomics-enabled `wasm32` target, the crate installs a global allocator made of 64 independent Talc heaps. A thread-local slot assigns each wasm thread a shard on its first allocation. Each shard uses Talc's wasm binning strategy and `WasmGrowAndClaim` memory source, with a `RawSpinlock` protecting that shard's heap.
 
 Each returned allocation stores its owning shard index immediately before the user pointer. This lets deallocation and reallocation return memory to the original shard even when an allocation is moved or freed by another worker. Shard collisions remain correct because each heap is locked, but they can reintroduce contention.
 
-The `sharded` feature is enabled by default and selects 64 shards. Disable it while retaining `wasm-browser` to build the single-shard control; that keeps the same Talc wasm binning and metadata path while restoring one shared allocator lock.
+The `sharded` feature is enabled by default and selects 64 shards. Disable it to build the single-shard control; that keeps the same Talc wasm binning and metadata path while restoring one shared allocator lock.
 
 The bindings crate must reference `ensure_linked()` so this allocator crate remains in the final wasm link graph. The allocator is selected at compile time by `#[global_allocator]`; `ensure_linked()` does not install or switch allocators at runtime.
 
 ## Scope and limitations
 
-- Intended only for browser wasm with shared-memory atomics and `orx-parallel` workloads.
+- Intended for atomics-enabled WebAssembly with shared memory and `orx-parallel` workloads, including browser WebAssembly.
 - Does not change `orx-parallel` or provide a configurable allocator API.
 - Uses a fixed shard count of 64; it is not yet configurable from the worker-pool size.
 - Each shard obtains memory independently. This can increase retained heap space and fragmentation.
@@ -28,7 +28,7 @@ Please use the following commands to test the lib with sharding enabled:
 RUSTC_BOOTSTRAP=1 \
 CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=/tmp/orx-wasm-bindgen-0.2.129/bin/wasm-bindgen-test-runner \
 RUSTFLAGS="-C target-feature=+atomics" \
-cargo test --target wasm32-unknown-unknown --no-default-features --features wasm-browser,sharded
+cargo test --target wasm32-unknown-unknown --features sharded
 ```
 
 and the following to test with a single shard configuration:
@@ -37,5 +37,5 @@ and the following to test with a single shard configuration:
 RUSTC_BOOTSTRAP=1 \
 CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=/tmp/orx-wasm-bindgen-0.2.129/bin/wasm-bindgen-test-runner \
 RUSTFLAGS="-C target-feature=+atomics" \
-cargo test --target wasm32-unknown-unknown --no-default-features --features wasm-browser
+cargo test --target wasm32-unknown-unknown --no-default-features
 ```

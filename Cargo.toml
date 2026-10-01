@@ -15,6 +15,5 @@ spinning_top = "0.3"
 wasm-bindgen-test = "0.3"
 
 [features]
-default = ["wasm-browser", "sharded"]
-wasm-browser = []
+default = ["sharded"]
 sharded = []
