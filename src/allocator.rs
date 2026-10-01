@@ -29,11 +29,13 @@ pub struct WasmParallelAllocator;
 
 unsafe impl GlobalAlloc for WasmParallelAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let Some(padded) = padded_layout(layout) else {
-            return ptr::null_mut();
-        };
-        let shard_index = current_shard();
-        allocate_from_shard(shard_index, padded)
+        match padded_layout(layout) {
+            Some(padded) => {
+                let shard_index = current_shard();
+                allocate_from_shard(shard_index, padded)
+            }
+            None => ptr::null_mut(),
+        }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
