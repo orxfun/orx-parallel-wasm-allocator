@@ -12,9 +12,8 @@ type Shard = talc::sync::TalcLock<
     talc::wasm::WasmBinning,
 >;
 
-std::thread_local! {
-    static THREAD_SHARD: Cell<usize> = const { Cell::new(UNASSIGNED_SHARD) };
-}
+#[thread_local]
+static THREAD_SHARD: Cell<usize> = const { Cell::new(UNASSIGNED_SHARD) };
 
 /// A sharded global allocator for atomics-enabled WebAssembly.
 ///
@@ -111,16 +110,14 @@ unsafe impl<const SHARD_COUNT: usize> GlobalAlloc for WasmParallelAllocator<SHAR
 
 impl<const SHARD_COUNT: usize> WasmParallelAllocator<SHARD_COUNT> {
     pub(super) fn current_shard(&self) -> usize {
-        THREAD_SHARD.with(|thread_shard| {
-            let shard_index = thread_shard.get();
-            if shard_index < SHARD_COUNT {
-                return shard_index;
-            }
+        let shard_index = THREAD_SHARD.get();
+        if shard_index < SHARD_COUNT {
+            return shard_index;
+        }
 
-            let shard_index = self.next_shard.fetch_add(1, Ordering::Relaxed) % SHARD_COUNT;
-            thread_shard.set(shard_index);
-            shard_index
-        })
+        let shard_index = self.next_shard.fetch_add(1, Ordering::Relaxed) % SHARD_COUNT;
+        THREAD_SHARD.set(shard_index);
+        shard_index
     }
 
     pub(super) fn allocate_from_shard(&self, shard_index: usize, padded: PaddedLayout) -> *mut u8 {

@@ -10,6 +10,13 @@
     clippy::missing_panics_doc,
     clippy::todo
 )]
+#![no_std]
+// `#[thread_local]` statics are unstable; required for per-thread shard
+// selection on atomics-enabled wasm32 without pulling in `std`.
+#![cfg_attr(
+    all(target_arch = "wasm32", target_feature = "atomics"),
+    feature(thread_local)
+)]
 
 #[cfg(all(test, target_arch = "wasm32", target_feature = "atomics"))]
 mod tests;
