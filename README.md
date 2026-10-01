@@ -6,13 +6,17 @@ This is not a general-purpose WebAssembly allocator. Use it when your applicatio
 
 ## Why it exists
 
-The allocator maintains independent Talc heaps, each protected by a `RawSpinlock`. A WebAssembly thread is assigned a shard on its first allocation. Allocations record their owning shard immediately before the user pointer, so a later deallocation or reallocation can return memory to the correct heap even when another worker performs it.
+Parallel WebAssembly does not automatically make every workload faster. For compute-heavy algorithms, the default allocator is often sufficient and a threaded implementation can scale well. The [`orx-parallel-wasm-demos/tsp/vanilla`](https://github.com/orxfun/orx-parallel-wasm-demos/tree/main/tsp/vanilla) example demonstrates this kind of workload.
 
-The const generic defaults to 64 heaps. Use `WasmParallelAllocator<1>` for a single-shard control configuration. The single-shard configuration is useful for comparison, but it gives up the allocator's main contention-reduction strategy.
+Memory-heavy algorithms are different. The [`orx-parallel-wasm-demos/tsp/vanilla-mem`](https://github.com/orxfun/orx-parallel-wasm-demos/tree/main/tsp/vanilla-mem) example deliberately performs excessive allocation to create memory pressure. With the default allocator, allocator contention can become the bottleneck, so adding workers can make the parallel version slower than the single-threaded version.
 
-Independent heaps can increase retained memory and fragmentation. The shard count is a compile-time parameter, defaulting to 64, and is not derived from the worker-pool size.
+This allocator addresses that specific failure mode by giving allocating WebAssembly threads independent heaps. As a practical rule of thumb, try it when a multi-threaded run, for example with 4 threads, is unexpectedly slower than the 1-threaded run for the same workload. Measure both versions: the allocator is specialized for allocation-heavy workloads and is not automatically beneficial for every computation.
 
 ## Shards and worker count
+
+A shard is an independent Talc heap protected by a `RawSpinlock`. A WebAssembly thread is assigned a shard on its first allocation. Allocations record their owning shard immediately before the user pointer, so a later deallocation or reallocation can return memory to the correct heap even when another worker performs it.
+
+The const generic defaults to 64 heaps. Use `WasmParallelAllocator<1>` for a single-shard control configuration. The single-shard configuration is useful for comparison, but it gives up the allocator's main contention-reduction strategy. Independent heaps can increase retained memory and fragmentation.
 
 A 64-shard allocator is valid for an `orx-parallel` pool with 8 workers. Shards are assigned lazily: a thread receives a shard only when it performs its first allocation. If exactly those 8 threads allocate, and no other threads allocate, the allocator will use 8 shards in either a 64-shard or an 8-shard configuration. In that narrow case, the two configurations should have essentially the same allocation contention and performance.
 
