@@ -2,7 +2,13 @@
 name = "orx-parallel-wasm-allocator"
 version = "0.1.0"
 edition = "2024"
-publish = false
+authors = ["orxfun <orx.ugur.arikan@gmail.com>"]
+readme = "README.md"
+description = "Allocator specialized for parallel computaitons in WASM"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/orxfun/orx-parallel-wasm-allocator/"
+keywords = ["parallel", "concurrency", "web", "thread", "webassembly"]
+categories = ["concurrency", "algorithms", "wasm", "web-programming"]
 
 [lib]
 crate-type = ["rlib"]
