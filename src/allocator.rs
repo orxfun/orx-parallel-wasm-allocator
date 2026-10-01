@@ -141,8 +141,3 @@ pub(super) unsafe fn read_shard_index(ptr: *mut u8) -> usize {
     // SAFETY: The allocator stores the shard index immediately before every returned pointer.
     unsafe { ptr.sub(HEADER_SIZE).cast::<usize>().read_unaligned() }
 }
-
-#[global_allocator]
-static GLOBAL_ALLOCATOR: WasmParallelAllocator = WasmParallelAllocator;
-
-pub fn ensure_linked() {}

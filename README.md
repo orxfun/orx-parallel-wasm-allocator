@@ -10,7 +10,16 @@ Each returned allocation stores its owning shard index immediately before the us
 
 The `sharded` feature is enabled by default and selects 64 shards. Disable it to build the single-shard control; that keeps the same Talc wasm binning and metadata path while restoring one shared allocator lock.
 
-The bindings crate must reference `ensure_linked()` so this allocator crate remains in the final wasm link graph. The allocator is selected at compile time by `#[global_allocator]`; `ensure_linked()` does not install or switch allocators at runtime.
+Select the allocator once in the final WebAssembly crate with Rust's standard `#[global_allocator]` mechanism:
+
+```rust
+use orx_parallel_wasm_allocator::WasmParallelAllocator;
+
+#[global_allocator]
+static GLOBAL_ALLOCATOR: WasmParallelAllocator = WasmParallelAllocator;
+```
+
+This compile-time declaration both selects the allocator and keeps it in the final wasm link graph. No exported function needs to call an initialization or linking helper.
 
 ## Scope and limitations
 
