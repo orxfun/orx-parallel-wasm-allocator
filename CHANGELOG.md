@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/orxfun/orx-parallel-wasm-allocator/compare/v0.1.1...v0.2.0) - 2026-10-01
+
+### Added
+
+- bump version ([#5](https://github.com/orxfun/orx-parallel-wasm-allocator/pull/5))
+
 ## [0.1.1](https://github.com/orxfun/orx-parallel-wasm-allocator/compare/v0.1.0...v0.1.1) - 2026-10-01
 
 ### Added
