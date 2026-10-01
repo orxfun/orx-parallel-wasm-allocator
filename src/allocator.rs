@@ -42,22 +42,29 @@ unsafe impl GlobalAlloc for WasmParallelAllocator {
         let Some(padded) = padded_layout(layout) else {
             return;
         };
+        // SAFETY: The caller must provide a pointer and layout returned by this allocator.
         let shard_index = unsafe { read_shard_index(ptr) };
         let Some(shard) = SHARDS.get(shard_index) else {
             return;
         };
+        // SAFETY: `padded.prefix` points from the user pointer to the base returned by this allocator.
         let base = unsafe { ptr.sub(padded.prefix) };
+        // SAFETY: `base` and `padded.layout` describe the live allocation previously returned by this shard.
         unsafe { shard.lock().deallocate(base, padded.layout) };
     }
 
+    // SAFETY: The caller must provide a valid allocation layout as required by `GlobalAlloc`.
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: `layout` is forwarded from the `GlobalAlloc` caller and therefore satisfies the same contract.
         let allocation = unsafe { self.alloc(layout) };
         if !allocation.is_null() {
+            // SAFETY: The allocator returned at least `layout.size()` writable bytes at `allocation`.
             unsafe { allocation.write_bytes(0, layout.size()) };
         }
         allocation
     }
 
+    // SAFETY: The caller must provide a live allocation and its original layout as required by `GlobalAlloc`.
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         let Some(new_layout) = Layout::from_size_align(new_size, layout.align()).ok() else {
             return ptr::null_mut();
@@ -65,13 +72,16 @@ unsafe impl GlobalAlloc for WasmParallelAllocator {
         let Some(padded) = padded_layout(new_layout) else {
             return ptr::null_mut();
         };
+        // SAFETY: The caller must provide a pointer and layout returned by this allocator.
         let shard_index = unsafe { read_shard_index(ptr) };
         let replacement = allocate_from_shard(shard_index, padded);
         if replacement.is_null() {
             return replacement;
         }
 
+        // SAFETY: Both pointers refer to distinct live allocations, and the copied length fits in both.
         unsafe { ptr::copy_nonoverlapping(ptr, replacement, layout.size().min(new_size)) };
+        // SAFETY: `ptr` is the live allocation supplied by the caller, with its original layout.
         unsafe { self.dealloc(ptr, layout) };
         replacement
     }
@@ -110,10 +120,13 @@ pub(super) fn allocate_from_shard(shard_index: usize, padded: PaddedLayout) -> *
     let Some(shard) = SHARDS.get(shard_index) else {
         return ptr::null_mut();
     };
+    // SAFETY: `padded.layout` is a valid layout produced by `padded_layout`, and the shard lock guards its heap.
     let Some(base) = (unsafe { shard.lock().allocate(padded.layout) }) else {
         return ptr::null_mut();
     };
+    // SAFETY: The allocation contains the reserved prefix and the resulting pointer remains within its bounds.
     let allocation = unsafe { base.as_ptr().add(padded.prefix) };
+    // SAFETY: `padded.prefix` reserves space for the header, and the base layout is aligned for `usize`.
     unsafe {
         allocation
             .sub(HEADER_SIZE)
@@ -123,7 +136,9 @@ pub(super) fn allocate_from_shard(shard_index: usize, padded: PaddedLayout) -> *
     allocation
 }
 
+// SAFETY: The caller must pass a pointer previously returned by this allocator and still owned by it.
 pub(super) unsafe fn read_shard_index(ptr: *mut u8) -> usize {
+    // SAFETY: The allocator stores the shard index immediately before every returned pointer.
     unsafe { ptr.sub(HEADER_SIZE).cast::<usize>().read_unaligned() }
 }
 
