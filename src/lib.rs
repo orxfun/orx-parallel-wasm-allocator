@@ -18,11 +18,11 @@
     feature(thread_local)
 )]
 
-#[cfg(all(test, target_arch = "wasm32", target_feature = "atomics"))]
+#[cfg(all(test, target_arch = "wasm32"))]
 mod tests;
 
-#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+#[cfg(target_arch = "wasm32")]
 mod allocator;
 
-#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+#[cfg(target_arch = "wasm32")]
 pub use allocator::WasmParallelAllocator;

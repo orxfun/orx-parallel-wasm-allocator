@@ -42,7 +42,7 @@ The shard count is a compile-time parameter. Use `WasmParallelAllocator::<64>::n
 
 The declaration must be in the final WebAssembly crate, such as a `wasm-bindgen` bindings crate. It selects the allocator at compile time and keeps the allocator crate in the final link graph.
 
-The allocator is compiled only for `wasm32` builds with the `atomics` target feature. It does not replace `orx-parallel` runtime initialization: initialize the parallel runtime once in each worker before its first parallel computation, as described in the [`orx-parallel` WASM documentation](https://github.com/orxfun/orx-parallel/blob/main/docs/wasm.md).
+The allocator API is available on `wasm32`; it is intended for builds with the `atomics` target feature and shared memory. It does not replace `orx-parallel` runtime initialization: initialize the parallel runtime once in each worker before its first parallel computation, as described in the [`orx-parallel` WASM documentation](https://github.com/orxfun/orx-parallel/blob/main/docs/wasm.md).
 
 ## Shards and worker count
 
