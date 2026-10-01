@@ -1,8 +1,12 @@
 use core::alloc::{GlobalAlloc, Layout};
-use core::cell::Cell;
 use core::ptr;
+
+#[cfg(target_feature = "atomics")]
+use core::cell::Cell;
+#[cfg(target_feature = "atomics")]
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+#[cfg(target_feature = "atomics")]
 const UNASSIGNED_SHARD: usize = usize::MAX;
 const HEADER_SIZE: usize = core::mem::size_of::<usize>();
 
@@ -12,6 +16,7 @@ type Shard = talc::sync::TalcLock<
     talc::wasm::WasmBinning,
 >;
 
+#[cfg(target_feature = "atomics")]
 #[thread_local]
 static THREAD_SHARD: Cell<usize> = const { Cell::new(UNASSIGNED_SHARD) };
 
@@ -23,6 +28,7 @@ static THREAD_SHARD: Cell<usize> = const { Cell::new(UNASSIGNED_SHARD) };
 /// and lower retained memory is more important than additional concurrency
 /// headroom.
 pub struct WasmParallelAllocator<const SHARD_COUNT: usize = 64> {
+    #[cfg(target_feature = "atomics")]
     next_shard: AtomicUsize,
     shards: [Shard; SHARD_COUNT],
 }
@@ -36,6 +42,7 @@ impl<const SHARD_COUNT: usize> WasmParallelAllocator<SHARD_COUNT> {
     pub const fn new() -> Self {
         assert!(SHARD_COUNT > 0);
         Self {
+            #[cfg(target_feature = "atomics")]
             next_shard: AtomicUsize::new(0),
             shards: [const { Shard::new(talc::wasm::WasmGrowAndClaim) }; SHARD_COUNT],
         }
@@ -110,14 +117,24 @@ unsafe impl<const SHARD_COUNT: usize> GlobalAlloc for WasmParallelAllocator<SHAR
 
 impl<const SHARD_COUNT: usize> WasmParallelAllocator<SHARD_COUNT> {
     pub(super) fn current_shard(&self) -> usize {
-        let shard_index = THREAD_SHARD.get();
-        if shard_index < SHARD_COUNT {
-            return shard_index;
+        #[cfg(not(target_feature = "atomics"))]
+        {
+            // wasm32v1-none is single-threaded, so no per-thread shard
+            // assignment is required.
+            0
         }
 
-        let shard_index = self.next_shard.fetch_add(1, Ordering::Relaxed) % SHARD_COUNT;
-        THREAD_SHARD.set(shard_index);
-        shard_index
+        #[cfg(target_feature = "atomics")]
+        {
+            let shard_index = THREAD_SHARD.get();
+            if shard_index < SHARD_COUNT {
+                return shard_index;
+            }
+
+            let shard_index = self.next_shard.fetch_add(1, Ordering::Relaxed) % SHARD_COUNT;
+            THREAD_SHARD.set(shard_index);
+            shard_index
+        }
     }
 
     pub(super) fn allocate_from_shard(&self, shard_index: usize, padded: PaddedLayout) -> *mut u8 {
