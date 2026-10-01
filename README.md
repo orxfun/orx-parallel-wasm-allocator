@@ -22,7 +22,16 @@ This allocator addresses that specific failure mode by giving allocating WebAsse
 
 ## Usage
 
-Add the dependency to the crate that produces the final WebAssembly module:
+Normally, enable the allocator through `orx-parallel`, which re-exports the
+allocator from its `wasm-allocator` feature:
+
+```toml
+[dependencies]
+orx-parallel = { version = "4.0", default-features = false, features = ["wasm", "wasm-allocator"] }
+```
+
+Use a direct dependency on `orx-parallel-wasm-allocator` only when the
+allocator is needed without the `orx-parallel` integration:
 
 ```toml
 [dependencies]
@@ -32,11 +41,14 @@ orx-parallel-wasm-allocator = "0.1"
 Declare the allocator once at crate scope:
 
 ```rust ignore
-use orx_parallel_wasm_allocator::WasmParallelAllocator;
+use orx_parallel::WasmParallelAllocator;
 
 #[global_allocator]
 static GLOBAL_ALLOCATOR: WasmParallelAllocator<64> = WasmParallelAllocator::<64>::new();
 ```
+
+With the standalone dependency, import the type from
+`orx_parallel_wasm_allocator` instead.
 
 The shard count is a compile-time parameter. Use `WasmParallelAllocator::<64>::new()` for 64 shards or `WasmParallelAllocator::<1>::new()` for one shard.
 
