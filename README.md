@@ -22,7 +22,16 @@ This allocator addresses that specific failure mode by giving allocating WebAsse
 
 ## Usage
 
-Add the dependency to the crate that produces the final WebAssembly module:
+Normally, enable the allocator through `orx-parallel`, which re-exports the
+allocator from its `wasm-allocator` feature:
+
+```toml
+[dependencies]
+orx-parallel = { version = "4.0", default-features = false, features = ["wasm", "wasm-allocator"] }
+```
+
+Use a direct dependency on `orx-parallel-wasm-allocator` only when the
+allocator is needed without the `orx-parallel` integration:
 
 ```toml
 [dependencies]
@@ -32,17 +41,20 @@ orx-parallel-wasm-allocator = "0.1"
 Declare the allocator once at crate scope:
 
 ```rust ignore
-use orx_parallel_wasm_allocator::WasmParallelAllocator;
+use orx_parallel::WasmParallelAllocator;
 
 #[global_allocator]
 static GLOBAL_ALLOCATOR: WasmParallelAllocator<64> = WasmParallelAllocator::<64>::new();
 ```
 
+With the standalone dependency, import the type from
+`orx_parallel_wasm_allocator` instead.
+
 The shard count is a compile-time parameter. Use `WasmParallelAllocator::<64>::new()` for 64 shards or `WasmParallelAllocator::<1>::new()` for one shard.
 
 The declaration must be in the final WebAssembly crate, such as a `wasm-bindgen` bindings crate. It selects the allocator at compile time and keeps the allocator crate in the final link graph.
 
-The allocator is compiled only for `wasm32` builds with the `atomics` target feature. It does not replace `orx-parallel` runtime initialization: initialize the parallel runtime once in each worker before its first parallel computation, as described in the [`orx-parallel` WASM documentation](https://github.com/orxfun/orx-parallel/blob/main/docs/wasm.md).
+The allocator API is available on `wasm32`; it is intended for builds with the `atomics` target feature and shared memory. It does not replace `orx-parallel` runtime initialization: initialize the parallel runtime once in each worker before its first parallel computation, as described in the [`orx-parallel` WASM documentation](https://github.com/orxfun/orx-parallel/blob/main/docs/wasm.md).
 
 ## Shards and worker count
 
