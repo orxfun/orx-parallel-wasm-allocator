@@ -29,6 +29,10 @@ jobs:
       run: rustup target add i686-unknown-linux-musl
     - name: Install wasm target
       run: rustup target add wasm32v1-none
+    - name: Install wasm32-unknown-unknown target
+      run: rustup target add wasm32-unknown-unknown
+    - name: Install wasm-bindgen-cli
+      run: cargo install wasm-bindgen-cli --version 0.2.129 --locked
     - name: Install miri
       run: rustup component add --toolchain nightly-x86_64-unknown-linux-gnu miri
     - name: Install no-std-check
@@ -47,6 +51,12 @@ jobs:
       run: cargo test --verbose --target i686-unknown-linux-musl
     - name: Check-wasm
       run: cargo check --verbose --no-default-features --target wasm32v1-none
+    - name: Test-wasm-atomics
+      env:
+        RUSTC_BOOTSTRAP: 1
+        CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+        RUSTFLAGS: -C target-feature=+atomics
+      run: cargo test --verbose --target wasm32-unknown-unknown
 
     - name: Clippy
       run: cargo clippy -- -D warnings --verbose
