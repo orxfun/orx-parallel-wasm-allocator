@@ -1,15 +1,12 @@
-use crate::allocator::WasmParallelAllocator;
+use crate::allocator::{WasmParallelAllocator, padded_layout, read_shard_index};
 use core::alloc::{GlobalAlloc, Layout};
 use wasm_bindgen_test::wasm_bindgen_test;
 
-#[cfg(feature = "sharded")]
-use crate::allocator::{
-    SHARD_COUNT, allocate_from_shard, current_shard, padded_layout, read_shard_index,
-};
+const SHARD_COUNT: usize = 8;
 
 #[wasm_bindgen_test]
 fn allocations_preserve_requested_alignment_and_bytes() {
-    let allocator = WasmParallelAllocator;
+    let allocator = WasmParallelAllocator::<64>::new();
 
     for alignment in [1, 2, 4, 8, 16, 64, 256, 4096] {
         let layout = Layout::from_size_align(37, alignment).unwrap();
@@ -30,7 +27,7 @@ fn allocations_preserve_requested_alignment_and_bytes() {
 
 #[wasm_bindgen_test]
 fn alloc_zeroed_initializes_the_requested_bytes() {
-    let allocator = WasmParallelAllocator;
+    let allocator = WasmParallelAllocator::<64>::new();
     let layout = Layout::from_size_align(257, 64).unwrap();
     let allocation = unsafe { allocator.alloc_zeroed(layout) };
     assert!(!allocation.is_null());
@@ -44,7 +41,7 @@ fn alloc_zeroed_initializes_the_requested_bytes() {
 
 #[wasm_bindgen_test]
 fn realloc_preserves_data_when_growing_and_shrinking() {
-    let allocator = WasmParallelAllocator;
+    let allocator = WasmParallelAllocator::<64>::new();
     let initial_layout = Layout::from_size_align(32, 64).unwrap();
     let allocation = unsafe { allocator.alloc(initial_layout) };
     assert!(!allocation.is_null());
@@ -70,7 +67,7 @@ fn realloc_preserves_data_when_growing_and_shrinking() {
 
 #[wasm_bindgen_test]
 fn failed_allocation_and_reallocation_do_not_corrupt_existing_data() {
-    let allocator = WasmParallelAllocator;
+    let allocator = WasmParallelAllocator::<64>::new();
     let impossible_layout = Layout::from_size_align(isize::MAX as usize, 1).unwrap();
     assert!(unsafe { allocator.alloc(impossible_layout) }.is_null());
 
@@ -88,23 +85,22 @@ fn failed_allocation_and_reallocation_do_not_corrupt_existing_data() {
     unsafe { allocator.dealloc(allocation, layout) };
 }
 
-#[cfg(feature = "sharded")]
 #[wasm_bindgen_test]
 fn deallocation_uses_the_recorded_owner_shard() {
-    let allocator = WasmParallelAllocator;
-    let current = current_shard();
+    let allocator = WasmParallelAllocator::<SHARD_COUNT>::new();
+    let current = allocator.current_shard();
     let owner = (current + 1) % SHARD_COUNT;
     let layout = Layout::from_size_align(48, 16).unwrap();
     let Some(padded) = padded_layout(layout) else {
         panic!("valid test layout should be paddable");
     };
-    let allocation = allocate_from_shard(owner, padded);
+    let allocation = allocator.allocate_from_shard(owner, padded);
     assert!(!allocation.is_null());
     assert_eq!(unsafe { read_shard_index(allocation) }, owner);
 
     unsafe { allocator.dealloc(allocation, layout) };
 
-    let allocation_again = allocate_from_shard(owner, padded);
+    let allocation_again = allocator.allocate_from_shard(owner, padded);
     assert!(!allocation_again.is_null());
     unsafe { allocator.dealloc(allocation_again, layout) };
 }

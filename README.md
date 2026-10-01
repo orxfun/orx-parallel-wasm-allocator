@@ -8,9 +8,19 @@ This is not a general-purpose WebAssembly allocator. Use it when your applicatio
 
 The allocator maintains independent Talc heaps, each protected by a `RawSpinlock`. A WebAssembly thread is assigned a shard on its first allocation. Allocations record their owning shard immediately before the user pointer, so a later deallocation or reallocation can return memory to the correct heap even when another worker performs it.
 
-The default `sharded` feature creates 64 heaps. Disable the default features to build a single-shard control configuration. The single-shard configuration is useful for comparison, but it gives up the allocator's main contention-reduction strategy.
+The const generic defaults to 64 heaps. Use `WasmParallelAllocator<1>` for a single-shard control configuration. The single-shard configuration is useful for comparison, but it gives up the allocator's main contention-reduction strategy.
 
 Independent heaps can increase retained memory and fragmentation. The shard count is currently fixed at 64 and is not derived from the worker-pool size.
+
+## Shards and worker count
+
+A 64-shard allocator is valid for an `orx-parallel` pool with 8 workers. Shards are assigned lazily: a thread receives a shard only when it performs its first allocation. If exactly those 8 threads allocate, and no other threads allocate, the allocator will use 8 shards in either a 64-shard or an 8-shard configuration. In that narrow case, the two configurations should have essentially the same allocation contention and performance.
+
+The configurations are not strictly identical. A 64-shard build still has a larger static shard table, and its shard-selection arithmetic uses a different constant, but those costs are tiny and occur mostly during initialization or a thread's first allocation. The meaningful difference is headroom: the 64-shard build avoids collisions if the main thread, runtime threads, or additional worker threads also allocate. A thread that is freed and later recreated also consumes another shard assignment over its lifetime.
+
+An 8-shard build can be better when the application truly has only 8 allocating threads and memory efficiency matters, because it has fewer independent heaps and less opportunity for fragmentation or retained memory. It can be worse if more than 8 distinct threads allocate, because multiple threads then share a shard lock. Allocations freed by another thread still lock the owning shard in both configurations.
+
+Therefore, B is not automatically faster than A. Choose 8 shards when the allocating-thread count is a stable, known limit and lower memory overhead is important; choose 64 when some extra memory overhead is acceptable and you want protection against unexpected or future allocating threads. Benchmark with the actual allocation pattern and choose the const generic that fits your application.
 
 ## Usage
 
@@ -27,8 +37,10 @@ Declare the allocator once at crate scope:
 use orx_parallel_wasm_allocator::WasmParallelAllocator;
 
 #[global_allocator]
-static GLOBAL_ALLOCATOR: WasmParallelAllocator = WasmParallelAllocator;
+static GLOBAL_ALLOCATOR: WasmParallelAllocator = WasmParallelAllocator::new();
 ```
+
+The shard count is a compile-time parameter. For example, use `WasmParallelAllocator::<8>::new()` for eight shards or `WasmParallelAllocator::<1>::new()` for one shard.
 
 The declaration must be in the final WebAssembly crate, such as a `wasm-bindgen` bindings crate. It selects the allocator at compile time and keeps the allocator crate in the final link graph.
 
@@ -64,16 +76,16 @@ Run the tests with the runner found on your `PATH`:
 RUSTC_BOOTSTRAP=1 \
 CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER="$(command -v wasm-bindgen-test-runner)" \
 RUSTFLAGS="-C target-feature=+atomics" \
-cargo test --target wasm32-unknown-unknown --features sharded
+cargo test --target wasm32-unknown-unknown
 ```
 
-For the single-shard comparison:
+The tests use an eight-shard allocator for the cross-shard coverage. To test a single-shard integration, declare `WasmParallelAllocator::<1>::new()` in the consuming crate.
 
 ```shell
 RUSTC_BOOTSTRAP=1 \
 CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER="$(command -v wasm-bindgen-test-runner)" \
 RUSTFLAGS="-C target-feature=+atomics" \
-cargo test --target wasm32-unknown-unknown --no-default-features
+cargo test --target wasm32-unknown-unknown
 ```
 
 For the broader project context, see [`orx-parallel`](https://github.com/orxfun/orx-parallel), [`orx-parallel-wasm`](https://github.com/orxfun/orx-parallel-wasm), and the [`orx-parallel-wasm-demos`](https://github.com/orxfun/orx-parallel-wasm-demos) repository.
