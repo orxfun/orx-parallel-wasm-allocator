@@ -31,7 +31,7 @@ orx-parallel-wasm-allocator = "0.1"
 
 Declare the allocator once at crate scope:
 
-```rust
+```rust ignore
 use orx_parallel_wasm_allocator::WasmParallelAllocator;
 
 #[global_allocator]

@@ -16,12 +16,24 @@ std::thread_local! {
     static THREAD_SHARD: Cell<usize> = const { Cell::new(UNASSIGNED_SHARD) };
 }
 
+/// A sharded global allocator for atomics-enabled WebAssembly.
+///
+/// Each shard owns an independent Talc heap protected by a spinlock. The
+/// `SHARD_COUNT` const generic controls the number of heaps and defaults to 64.
+/// Use a smaller value when the number of allocating threads is a known limit
+/// and lower retained memory is more important than additional concurrency
+/// headroom.
 pub struct WasmParallelAllocator<const SHARD_COUNT: usize = 64> {
     next_shard: AtomicUsize,
     shards: [Shard; SHARD_COUNT],
 }
 
 impl<const SHARD_COUNT: usize> WasmParallelAllocator<SHARD_COUNT> {
+    /// Creates an allocator with `SHARD_COUNT` independent heaps.
+    ///
+    /// # Panics
+    ///
+    /// Panics at compile time when `SHARD_COUNT` is zero.
     pub const fn new() -> Self {
         assert!(SHARD_COUNT > 0);
         Self {
