@@ -10,7 +10,7 @@ The allocator maintains independent Talc heaps, each protected by a `RawSpinlock
 
 The const generic defaults to 64 heaps. Use `WasmParallelAllocator<1>` for a single-shard control configuration. The single-shard configuration is useful for comparison, but it gives up the allocator's main contention-reduction strategy.
 
-Independent heaps can increase retained memory and fragmentation. The shard count is currently fixed at 64 and is not derived from the worker-pool size.
+Independent heaps can increase retained memory and fragmentation. The shard count is a compile-time parameter, defaulting to 64, and is not derived from the worker-pool size.
 
 ## Shards and worker count
 
@@ -70,7 +70,7 @@ The allocator tests target atomics-enabled WebAssembly. The `wasm-bindgen-test-r
 cargo install wasm-bindgen-cli --version 0.2.129 --locked
 ```
 
-Run the tests with the runner found on your `PATH`:
+Run the tests with the runner found on your `PATH`. The suite covers the default 64-shard allocator and an explicit eight-shard allocator:
 
 ```shell
 RUSTC_BOOTSTRAP=1 \
@@ -79,13 +79,6 @@ RUSTFLAGS="-C target-feature=+atomics" \
 cargo test --target wasm32-unknown-unknown
 ```
 
-The tests use an eight-shard allocator for the cross-shard coverage. To test a single-shard integration, declare `WasmParallelAllocator::<1>::new()` in the consuming crate.
-
-```shell
-RUSTC_BOOTSTRAP=1 \
-CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER="$(command -v wasm-bindgen-test-runner)" \
-RUSTFLAGS="-C target-feature=+atomics" \
-cargo test --target wasm32-unknown-unknown
-```
+The single-shard configuration is `WasmParallelAllocator::<1>::new()`. Select it in the consuming crate's `#[global_allocator]` declaration when comparing one shard against a larger configuration.
 
 For the broader project context, see [`orx-parallel`](https://github.com/orxfun/orx-parallel), [`orx-parallel-wasm`](https://github.com/orxfun/orx-parallel-wasm), and the [`orx-parallel-wasm-demos`](https://github.com/orxfun/orx-parallel-wasm-demos) repository.

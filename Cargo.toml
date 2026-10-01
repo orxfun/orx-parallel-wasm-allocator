@@ -13,5 +13,3 @@ spinning_top = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
-
-# Configure the shard count with WasmParallelAllocator's const generic.

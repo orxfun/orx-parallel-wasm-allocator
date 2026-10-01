@@ -104,3 +104,12 @@ fn deallocation_uses_the_recorded_owner_shard() {
     assert!(!allocation_again.is_null());
     unsafe { allocator.dealloc(allocation_again, layout) };
 }
+
+#[wasm_bindgen_test]
+fn single_shard_allocator_allocates_and_deallocates() {
+    let allocator = WasmParallelAllocator::<1>::new();
+    let layout = Layout::from_size_align(32, 8).unwrap();
+    let allocation = unsafe { allocator.alloc(layout) };
+    assert!(!allocation.is_null());
+    unsafe { allocator.dealloc(allocation, layout) };
+}
