@@ -1,5 +1,9 @@
 # orx-parallel-wasm-allocator
 
+[![orx-parallel-wasm-allocator crate](https://img.shields.io/crates/v/orx-parallel-wasm-allocator.svg)](https://crates.io/crates/orx-parallel-wasm-allocator)
+[![orx-parallel-wasm-allocator crate](https://img.shields.io/crates/d/orx-parallel-wasm-allocator.svg)](https://crates.io/crates/orx-parallel-wasm-allocator)
+[![orx-parallel-wasm-allocator documentation](https://docs.rs/orx-parallel-wasm-allocator/badge.svg)](https://docs.rs/orx-parallel-wasm-allocator)
+
 `orx-parallel-wasm-allocator` is a specialized global allocator for memory-heavy, atomics-enabled WebAssembly workloads that use [`orx-parallel`](https://github.com/orxfun/orx-parallel). It is designed for parallel browser WebAssembly workflows where several workers allocate concurrently and the default allocator becomes a scalability bottleneck.
 
 This is not a general-purpose WebAssembly allocator. Use it when your application needs shared-memory WebAssembly threads, uses `orx-parallel`, and benefits from independent allocation heaps. Benchmark your workload before adopting it in production.
@@ -90,3 +94,11 @@ cargo test --target wasm32-unknown-unknown
 The single-shard configuration is `WasmParallelAllocator::<1>::new()`. Select it in the consuming crate's `#[global_allocator]` declaration when comparing one shard against a larger configuration.
 
 For the broader project context, see [`orx-parallel`](https://github.com/orxfun/orx-parallel), [`orx-parallel-wasm`](https://github.com/orxfun/orx-parallel-wasm), and the [`orx-parallel-wasm-demos`](https://github.com/orxfun/orx-parallel-wasm-demos) repository.
+
+## Contributing
+
+Contributions are welcome! If you notice an error, have a question or think something could be improved, please open an [issue](https://github.com/orxfun/orx-parallel-wasm-allocator/issues/new) or create a PR.
+
+## License
+
+Dual-licensed under [Apache 2.0](LICENSE-APACHE) or [MIT](LICENSE-MIT).
