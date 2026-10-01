@@ -1,8 +1,16 @@
-// #[cfg(all(
-//     target_arch = "wasm32",
-//     target_feature = "atomics",
-//     feature = "wasm-browser"
-// ))]
+#[cfg(all(
+    test,
+    target_arch = "wasm32",
+    target_feature = "atomics",
+    feature = "wasm-browser"
+))]
+mod tests;
+
+#[cfg(all(
+    target_arch = "wasm32",
+    target_feature = "atomics",
+    feature = "wasm-browser"
+))]
 mod allocator;
 
 #[cfg(all(
@@ -12,15 +20,7 @@ mod allocator;
 ))]
 pub use allocator::ensure_linked;
 
-#[cfg(all(
-    test,
-    target_arch = "wasm32",
-    target_feature = "atomics",
-    feature = "wasm-browser"
-))]
-mod tests;
-
-#[cfg(not(any(
+#[cfg(not(all(
     target_arch = "wasm32",
     target_feature = "atomics",
     feature = "wasm-browser"
