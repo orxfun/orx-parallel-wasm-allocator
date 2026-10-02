@@ -14,6 +14,8 @@ Parallel WebAssembly does not automatically make every workload faster. For comp
 
 Memory-heavy algorithms are different. The [`orx-parallel-wasm-demos/tsp/vanilla-mem`](https://github.com/orxfun/orx-parallel-wasm-demos/tree/main/tsp/vanilla-mem) example deliberately performs excessive allocation to create memory pressure. With the default allocator, allocator contention can become the bottleneck, so adding workers can make the parallel version slower than the single-threaded version.
 
+The paired [`vanilla-mem-issue` live demo](https://orx-parallel-wasm-demo-tsp-vanilla-mem-issue.pages.dev/) shows this slowdown with `orx-parallel` and without the `wasm-allocator` feature ([source code](https://github.com/orxfun/orx-parallel-wasm-demos/tree/main/tsp/vanilla-mem-issue)). The [`vanilla-mem-fixed` live demo](https://orx-parallel-wasm-demo-tsp-vanilla-mem-fixed.pages.dev/) uses the same allocation-heavy scenario with `wasm-allocator` enabled, where parallelization speeds up the computation ([source code](https://github.com/orxfun/orx-parallel-wasm-demos/tree/main/tsp/vanilla-mem-fixed)). Use the demos to compare the behavior and investigate the implementation.
+
 This allocator addresses that specific failure mode by giving allocating WebAssembly threads independent heaps.
 
 ## When to use
